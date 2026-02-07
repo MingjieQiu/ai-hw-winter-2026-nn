@@ -248,7 +248,7 @@ if __name__ == '__main__':
 
         results[model_name] = {
             'final_accuracy': accuracy[-1],
-            'accuracies': accuracy
+            'epochs_accuracies': accuracy
         }
         torch.save(model.state_dict(), f'models/{model_name.lower()}.pth')
 
