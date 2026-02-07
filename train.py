@@ -133,7 +133,7 @@ def test_model(model, test_loader):
 
 
 # Train
-def train_model(model, train_loader, test_loader, model_name, epochs=3):
+def train_model(model, train_loader, test_loader, model_name, epochs=10):
     """Train a model and return results"""
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.Adam(model.parameters(), lr=0.001)

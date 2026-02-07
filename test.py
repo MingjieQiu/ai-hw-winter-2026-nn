@@ -1,9 +1,7 @@
 import torch
-from train import MLP, CNN, TransformerEncoder, get_data_loaders, test_model
+from train import MLP, CNN, TransformerEncoder, get_data_loaders, test_model, device
 import json
 import os
-
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 if __name__ == '__main__':
     # Load test data
