@@ -12,9 +12,10 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 print(f"Using device: {device}")
 
 
-# ============ DATA LOADING ============
+# Dataset Loading
 def get_data_loaders(augment=False):
     """Load MNIST dataset"""
+    # Define transforms for training data
     if augment:
         train_transform = transforms.Compose([
             transforms.RandomRotation(10),
@@ -28,21 +29,24 @@ def get_data_loaders(augment=False):
             transforms.Normalize((0.1307,), (0.3081,))
         ])
 
+    # Define transforms for test data (no augmentation)
     test_transform = transforms.Compose([
         transforms.ToTensor(),
         transforms.Normalize((0.1307,), (0.3081,))
     ])
 
-    train_dataset = datasets.MNIST('./data', train=True, download=True, transform=train_transform)
-    test_dataset = datasets.MNIST('./data', train=False, download=True, transform=test_transform)
+    # Load training and test dataset
+    train_dataset = datasets.MNIST(root='./data', train=True, transform=train_transform, download=True)
+    test_dataset = datasets.MNIST(root='./data', train=False, transform=test_transform, download=True)
 
+    # Create data loaders
     train_loader = DataLoader(train_dataset, batch_size=64, shuffle=True)
     test_loader = DataLoader(test_dataset, batch_size=1000, shuffle=False)
 
     return train_loader, test_loader
 
 
-# ============ MODEL 1: MLP ============
+# Model 1: MLP
 class MLP(nn.Module):
     def __init__(self):
         super(MLP, self).__init__()
@@ -63,7 +67,7 @@ class MLP(nn.Module):
         return x
 
 
-# ============ MODEL 2: CNN ============
+# Model 2: CNN
 class CNN(nn.Module):
     def __init__(self):
         super(CNN, self).__init__()
@@ -85,7 +89,7 @@ class CNN(nn.Module):
         return x
 
 
-# ============ MODEL 3: Transformer ============
+# Model 3: Transformer
 class TransformerEncoder(nn.Module):
     def __init__(self):
         super(TransformerEncoder, self).__init__()
@@ -120,7 +124,7 @@ class TransformerEncoder(nn.Module):
         return x
 
 
-# ============ TRAINING FUNCTION ============
+# Training
 def train_model(model, train_loader, test_loader, model_name, epochs=10):
     """Train a model and return results"""
     criterion = nn.CrossEntropyLoss()
@@ -159,7 +163,7 @@ def train_model(model, train_loader, test_loader, model_name, epochs=10):
     return train_losses, test_accuracies
 
 
-# ============ TESTING FUNCTION ============
+# Testing
 def test_model(model, test_loader):
     """Test model and return accuracy"""
     model.eval()
@@ -178,7 +182,6 @@ def test_model(model, test_loader):
     return accuracy
 
 
-# ============ MAIN EXECUTION ============
 if __name__ == '__main__':
     # Load data
     print("Loading MNIST dataset...")
