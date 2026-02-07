@@ -6,16 +6,16 @@ from torch.utils.data import DataLoader
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 import json
+import os
 
 # Set device
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 print(f"Using device: {device}")
 
 
-# Dataset Loading
+# ============ DATA LOADING ============
 def get_data_loaders(augment=False):
     """Load MNIST dataset"""
-    # Define transforms for training data
     if augment:
         train_transform = transforms.Compose([
             transforms.RandomRotation(10),
@@ -29,24 +29,21 @@ def get_data_loaders(augment=False):
             transforms.Normalize((0.1307,), (0.3081,))
         ])
 
-    # Define transforms for test data (no augmentation)
     test_transform = transforms.Compose([
         transforms.ToTensor(),
         transforms.Normalize((0.1307,), (0.3081,))
     ])
 
-    # Load training and test dataset
-    train_dataset = datasets.MNIST(root='./data', train=True, transform=train_transform, download=True)
-    test_dataset = datasets.MNIST(root='./data', train=False, transform=test_transform, download=True)
+    train_dataset = datasets.MNIST(root='./data', train=True, transform=train_transform, download=False)
+    test_dataset = datasets.MNIST(root='./data', train=False, transform=test_transform, download=False)
 
-    # Create data loaders
     train_loader = DataLoader(train_dataset, batch_size=64, shuffle=True)
     test_loader = DataLoader(test_dataset, batch_size=1000, shuffle=False)
 
     return train_loader, test_loader
 
 
-# Model 1: MLP
+# MODELS
 class MLP(nn.Module):
     def __init__(self):
         super(MLP, self).__init__()
@@ -67,7 +64,6 @@ class MLP(nn.Module):
         return x
 
 
-# Model 2: CNN
 class CNN(nn.Module):
     def __init__(self):
         super(CNN, self).__init__()
@@ -89,7 +85,6 @@ class CNN(nn.Module):
         return x
 
 
-# Model 3: Transformer
 class TransformerEncoder(nn.Module):
     def __init__(self):
         super(TransformerEncoder, self).__init__()
@@ -104,28 +99,41 @@ class TransformerEncoder(nn.Module):
         encoder_layer = nn.TransformerEncoderLayer(d_model=self.embed_dim, nhead=4,
                                                    dim_feedforward=256, dropout=0.1, batch_first=True)
         self.transformer = nn.TransformerEncoder(encoder_layer, num_layers=2)
-
         self.fc = nn.Linear(self.embed_dim, 10)
 
     def forward(self, x):
         batch_size = x.size(0)
-        # Create patches
         x = x.unfold(2, self.patch_size, self.patch_size).unfold(3, self.patch_size, self.patch_size)
         x = x.contiguous().view(batch_size, 1, self.num_patches, -1).squeeze(1)
-
-        # Embed patches
         x = self.patch_embed(x)
         x = x + self.pos_embed
-
-        # Transformer
         x = self.transformer(x)
-        x = x.mean(dim=1)  # Global average pooling
+        x = x.mean(dim=1)
         x = self.fc(x)
         return x
 
 
-# Training
-def train_model(model, train_loader, test_loader, model_name, epochs=10):
+# Test
+def test_model(model, test_loader):
+    """Test model and return accuracy"""
+    model.eval()
+    correct = 0
+    total = 0
+
+    with torch.no_grad():
+        for images, labels in test_loader:
+            images, labels = images.to(device), labels.to(device)
+            outputs = model(images)
+            _, predicted = torch.max(outputs.data, 1)
+            total += labels.size(0)
+            correct += (predicted == labels).sum().item()
+
+    accuracy = 100 * correct / total
+    return accuracy
+
+
+# Train
+def train_model(model, train_loader, test_loader, model_name, epochs=3):
     """Train a model and return results"""
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.Adam(model.parameters(), lr=0.001)
@@ -163,67 +171,45 @@ def train_model(model, train_loader, test_loader, model_name, epochs=10):
     return train_losses, test_accuracies
 
 
-# Testing
-def test_model(model, test_loader):
-    """Test model and return accuracy"""
-    model.eval()
-    correct = 0
-    total = 0
-
-    with torch.no_grad():
-        for images, labels in test_loader:
-            images, labels = images.to(device), labels.to(device)
-            outputs = model(images)
-            _, predicted = torch.max(outputs.data, 1)
-            total += labels.size(0)
-            correct += (predicted == labels).sum().item()
-
-    accuracy = 100 * correct / total
-    return accuracy
-
-
 if __name__ == '__main__':
+    # Create directories
+    os.makedirs('models', exist_ok=True)
+    os.makedirs('results', exist_ok=True)
+
     # Load data
     print("Loading MNIST dataset...")
     train_loader, test_loader = get_data_loaders(augment=False)
 
+    # Define models to train
+    models_to_train = {
+        'MLP': MLP(),
+        'CNN': CNN(),
+        'Transformer': TransformerEncoder()
+    }
+
     results = {}
 
-    # Train MLP
-    print("\n========== Training MLP ==========")
-    mlp = MLP().to(device)
-    mlp_losses, mlp_accs = train_model(mlp, train_loader, test_loader, "MLP", epochs=10)
-    results['MLP'] = {'final_accuracy': mlp_accs[-1], 'accuracies': mlp_accs}
-    torch.save(mlp.state_dict(), 'models/mlp.pth')
-
-    # Train CNN
-    print("\n========== Training CNN ==========")
-    cnn = CNN().to(device)
-    cnn_losses, cnn_accs = train_model(cnn, train_loader, test_loader, "CNN", epochs=10)
-    results['CNN'] = {'final_accuracy': cnn_accs[-1], 'accuracies': cnn_accs}
-    torch.save(cnn.state_dict(), 'models/cnn.pth')
-
-    # Train Transformer
-    print("\n========== Training Transformer ==========")
-    transformer = TransformerEncoder().to(device)
-    trans_losses, trans_accs = train_model(transformer, train_loader, test_loader, "Transformer", epochs=10)
-    results['Transformer'] = {'final_accuracy': trans_accs[-1], 'accuracies': trans_accs}
-    torch.save(transformer.state_dict(), 'models/transformer.pth')
+    # Train all models
+    for model_name, model in models_to_train.items():
+        print(f"\n{'=' * 10} Training {model_name} {'=' * 10}")
+        model = model.to(device)
+        losses, accs = train_model(model, train_loader, test_loader, model_name, epochs=10)
+        results[model_name] = {'final_accuracy': accs[-1], 'accuracies': accs}
+        torch.save(model.state_dict(), f'models/{model_name.lower()}.pth')
 
     # Save results
     with open('results/training_results.json', 'w') as f:
         json.dump(results, f, indent=4)
 
     # Print summary
-    print("\n========== FINAL RESULTS ==========")
+    print("\n" + "=" * 10 + " FINAL RESULTS " + "=" * 10)
     for model_name, res in results.items():
         print(f"{model_name}: {res['final_accuracy']:.2f}%")
 
     # Plot results
     plt.figure(figsize=(10, 5))
-    plt.plot(mlp_accs, label='MLP')
-    plt.plot(cnn_accs, label='CNN')
-    plt.plot(trans_accs, label='Transformer')
+    for model_name, res in results.items():
+        plt.plot(res['accuracies'], label=model_name)
     plt.xlabel('Epoch')
     plt.ylabel('Test Accuracy (%)')
     plt.title('Model Comparison on MNIST')
