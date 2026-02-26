@@ -250,7 +250,7 @@ if __name__ == '__main__':
             'final_accuracy': accuracy[-1],
             'epochs_accuracies': accuracy
         }
-        torch.save(model.state_dict(), f'models/{model_name.lower()}.pth')
+        torch.save(model.state_dict(), f'Assignment_4-1_MNIST_Recognition_by_NN/models/{model_name.lower()}.pth')
 
     with open('results/training_results.json', 'w') as f:
         json.dump(results, f, indent=4)

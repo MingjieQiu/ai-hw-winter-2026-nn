@@ -19,7 +19,7 @@ if __name__ == '__main__':
         model = model.to(device)
 
         # Load pre-trained weights from saved './models/'
-        model.load_state_dict(torch.load(f'models/{model_name.lower()}.pth'))
+        model.load_state_dict(torch.load(f'Assignment_4-1_MNIST_Recognition_by_NN/models/{model_name.lower()}.pth'))
 
         accuracy = test_model(model, test_loader)
         results[model_name] = accuracy
