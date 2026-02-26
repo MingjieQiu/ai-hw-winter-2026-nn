@@ -3,6 +3,8 @@ MSCS2201-2: Artificial Intelligence @ Sofia University
 
 Assignment #4.1: MNIST Recognition by NN
 
+Assignment #7.1: Attack MNIST Recognitio
+
 ## Results
 Training and testing results of the MLP, CNN, Transformer are saved in the `./results` folder.
 
